@@ -69,6 +69,9 @@ pip install -r requirements.txt
 
 `ffmpeg` (6.x/7.x) must be available on the system PATH for video decoding.
 
+Verify the install with `python check_env.py`. For the full per-run workflow,
+see `docs/QUICKSTART.md`, and for the module/run contracts see `docs/INTERFACES.md`.
+
 ## Method overview
 
 - **Task:** binary deepfake detection (real vs. fake) framed as a
