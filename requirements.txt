@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# PyTorch is installed SEPARATELY from the cu128 wheel index, NOT from PyPI:
+#
+#   pip install torch==2.9.* torchvision==0.24.* torchaudio==2.9.* \
+#       --index-url https://download.pytorch.org/whl/cu128
+#
+# The default PyPI torch wheel ships without sm_120 kernels and will fail on
+# RTX 50-series (Blackwell) GPUs. The cu128 wheel also runs on older cards
+# (e.g. Tesla P100, sm_60), so one install serves the whole team.
+# ---------------------------------------------------------------------------
+
+# Core numerics / data handling
+numpy>=2.0
+pandas>=2.0
+opencv-python>=4.10          # use opencv-python-headless on headless machines
+
+# Video decoding (offline preprocessing pass)
+torchcodec>=0.8
+
+# Face detection / landmarks for cropping (pick one as primary; see data/README.md)
+mediapipe>=0.10
+
+# Model backbones (EfficientNet, Xception)
+timm>=1.0
+
+# Metrics + training utilities
+scikit-learn>=1.5
+torchmetrics>=1.0
+pytorch-lightning>=2.0
+
+# Config + experiment tracking
+pyyaml>=6.0
+omegaconf>=2.3
+wandb>=0.17
+tensorboard>=2.16
+
+# EDA / visualization / progress
+matplotlib
+seaborn
+tqdm
