@@ -1,0 +1,21 @@
+run_name: xception_holdout-face2face
+seed: 1337
+
+backbone: legacy_xception   # timm name for the classic Xception
+pretrained: true
+input_size: 299
+
+manifest: data/manifests/crops.parquet
+split: data/splits/holdout-face2face.csv
+held_out_method: Face2Face
+
+epochs: 15
+batch_size: 32
+lr: 0.0003
+amp: bf16
+checkpoint_dir: checkpoints/xception_holdout-face2face
+
+video_level: true
+extra_test_sets:
+  - name: SimSwap
+    split: data/splits/simswap-test.csv
