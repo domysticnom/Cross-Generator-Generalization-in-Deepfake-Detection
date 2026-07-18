@@ -1,0 +1,7 @@
+method,expected,found,corrupt,status
+real,1000,1000,0,OK
+DeepFakes,1000,1000,0,OK
+Face2Face,1000,1000,0,OK
+FaceSwap,1000,1000,0,OK
+NeuralTextures,1000,1000,0,OK
+TOTAL,5000,5000,0,OK
