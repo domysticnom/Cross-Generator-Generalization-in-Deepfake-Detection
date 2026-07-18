@@ -100,12 +100,74 @@ def sample_frames(path, n):
     return frames
 
 
+# mediapipe dropped the legacy mp.solutions API in the 2026 builds, so we use the
+# Tasks face detector. It needs a small model file, downloaded once and cached.
+BLAZE_URL = ("https://storage.googleapis.com/mediapipe-models/face_detector/"
+             "blaze_face_short_range/float16/1/blaze_face_short_range.tflite")
+
+
+def ensure_blaze_model():
+    cache = os.path.join(os.path.expanduser("~"), ".cache", "ffpp_preprocess")
+    os.makedirs(cache, exist_ok=True)
+    path = os.path.join(cache, "blaze_face_short_range.tflite")
+    if not os.path.exists(path):
+        import urllib.request
+        print("downloading face detector model to", path)
+        urllib.request.urlretrieve(BLAZE_URL, path)
+    return path
+
+
+class _Box:
+    # the fields crop_face reads off relative_bounding_box
+    def __init__(self, xmin, ymin, width, height):
+        self.xmin = xmin
+        self.ymin = ymin
+        self.width = width
+        self.height = height
+
+
+class _Detection:
+    def __init__(self, box):
+        self.location_data = type("loc", (), {"relative_bounding_box": box})
+
+
+class _Result:
+    def __init__(self, detections):
+        self.detections = detections
+
+
+class TasksDetector:
+    # wraps the mediapipe Tasks FaceDetector to expose the same
+    # .process(rgb) -> result.detections[i].location_data.relative_bounding_box
+    # interface the rest of the pipeline (and the stub detector in tests) uses
+    def __init__(self, detector):
+        self.detector = detector
+
+    def process(self, rgb):
+        import mediapipe as mp
+        h, w = rgb.shape[:2]
+        image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(rgb))
+        res = self.detector.detect(image)
+        dets = []
+        for d in res.detections:
+            bb = d.bounding_box  # pixel coords: origin_x, origin_y, width, height
+            dets.append(_Detection(_Box(bb.origin_x / w, bb.origin_y / h,
+                                        bb.width / w, bb.height / h)))
+        return _Result(dets)
+
+    def close(self):
+        self.detector.close()
+
+
 def make_detector(confidence):
     # import mediapipe lazily so the module and its pure functions load without
     # mediapipe installed and without a GPU (tests inject a stub detector instead)
-    import mediapipe as mp
-    return mp.solutions.face_detection.FaceDetection(
-        model_selection=1, min_detection_confidence=confidence)
+    from mediapipe.tasks import python as mp_python
+    from mediapipe.tasks.python import vision
+    opts = vision.FaceDetectorOptions(
+        base_options=mp_python.BaseOptions(model_asset_path=ensure_blaze_model()),
+        min_detection_confidence=confidence)
+    return TasksDetector(vision.FaceDetector.create_from_options(opts))
 
 
 def crop_face(fd, img, margin=DEFAULT_MARGIN, size=DEFAULT_SIZE):
