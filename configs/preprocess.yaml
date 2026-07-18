@@ -1,0 +1,10 @@
+# Phase 2 EDA placeholder defaults for the FF++ face-crop cache.
+# A later EDA pass may revise these by editing this file, not the code.
+# data/preprocess.py reads these keys; any missing key falls back to the
+# matching module default (DEFAULT_FRAMES, DEFAULT_SIZE, ...).
+frames: 20        # frames sampled per clip (deterministic np.linspace)
+size: 256         # output crop square size in pixels
+margin: 0.3       # extra fraction of the face box kept around the crop
+confidence: 0.5   # mediapipe face-detector min detection confidence
+seed: 1337        # sampling seed, recorded so the cache is reproducible
+compression: c23  # FF++ compression tag stored in the manifest
