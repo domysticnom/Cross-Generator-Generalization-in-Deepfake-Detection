@@ -1,4 +1,5 @@
 import argparse
+import csv
 import glob
 import json
 import os
@@ -7,6 +8,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import yaml
+from tqdm import tqdm
 
 # expects a normalized layout: raw/<method>/<clip>.mp4
 METHODS = ["real", "DeepFakes", "Face2Face", "FaceSwap", "NeuralTextures"]
@@ -16,6 +18,16 @@ METHODS = ["real", "DeepFakes", "Face2Face", "FaceSwap", "NeuralTextures"]
 # order; changing it breaks Phase 4 and Phase 5, so do not reorder or rename.
 CROP_COLUMNS = ["crop_id", "clip_id", "source_id", "method", "label",
                 "official_split", "frame_idx", "compression", "path"]
+
+# the per-clip face-detection success-rate log schema (data/manifests/detection_log.csv).
+# this small CSV evidences ROADMAP criterion 3 (comparable real-vs-fake detection
+# failure rates) and doubles as the resume ledger: any clip_id already here was done.
+DETECT_LOG_COLUMNS = ["clip_id", "method", "label", "frames_sampled",
+                      "faces_detected", "detection_rate"]
+
+# a clip counts as a detection "failure" for the audit summary when fewer than this
+# fraction of its sampled frames yielded a face
+LOW_RATE = 0.5
 
 # documented defaults (Phase 2 EDA placeholders; a later EDA pass may revise
 # these by editing configs/preprocess.yaml rather than this code)
@@ -158,7 +170,110 @@ def process_clip(detector, frames, method, clip_id, source_id, official_split,
     return rows, faces_detected
 
 
-def run(raw, out, manifest_path, config, official, detector=None, frame_reader=None):
+def detection_rate(faces_detected, frames_sampled):
+    # faces per sampled frame, with a zero-frames guard, rounded for the log
+    if frames_sampled > 0:
+        return round(faces_detected / frames_sampled, 4)
+    return 0.0
+
+
+def summarize_detection(rows, low=LOW_RATE):
+    # pure aggregate over detection-log rows (no file I/O) so it is unit-testable.
+    # coerces label/detection_rate since carried-over rows read from CSV are strings.
+    def group_stats(group):
+        n = len(group)
+        rates = [float(r["detection_rate"]) for r in group]
+        mean = round(sum(rates) / n, 4) if n else 0.0
+        below = sum(1 for x in rates if x < low)
+        return {"clips": n, "mean_rate": mean, "below_low": below}
+
+    real = [r for r in rows if int(r["label"]) == 0]
+    fake = [r for r in rows if int(r["label"]) == 1]
+
+    per_method = {}
+    for r in rows:
+        per_method.setdefault(r["method"], []).append(float(r["detection_rate"]))
+    per_method_mean = {m: round(sum(v) / len(v), 4) for m, v in per_method.items()}
+
+    return {
+        "low": low,
+        "real": group_stats(real),
+        "fake": group_stats(fake),
+        "per_method": per_method_mean,
+    }
+
+
+def print_detection_summary(summary):
+    real, fake = summary["real"], summary["fake"]
+    low = summary["low"]
+    print("detection success-rate summary (real vs fake, threshold %.2f):" % low)
+    # real and fake means side by side for an at-a-glance comparability check
+    print("  real (label 0): clips={:<6} mean_rate={:<8} below_low={}".format(
+        real["clips"], real["mean_rate"], real["below_low"]))
+    print("  fake (label 1): clips={:<6} mean_rate={:<8} below_low={}".format(
+        fake["clips"], fake["mean_rate"], fake["below_low"]))
+    print("  per-method mean detection_rate:")
+    for m, mean in summary["per_method"].items():
+        print("    {:<15} {}".format(m, mean))
+
+
+def load_done_clips(detect_log_path):
+    # the detection log doubles as the resume ledger: read the clip_ids already
+    # recorded so a resumed run skips them. Missing file means nothing is done yet.
+    done = set()
+    if not detect_log_path or not os.path.isfile(detect_log_path):
+        return done
+    with open(detect_log_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            done.add(row["clip_id"])
+    return done
+
+
+def load_detection_rows(detect_log_path):
+    # read existing detection rows to carry over when resuming; empty if absent
+    rows = []
+    if not detect_log_path or not os.path.isfile(detect_log_path):
+        return rows
+    with open(detect_log_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            rows.append(dict(row))
+    return rows
+
+
+def load_manifest_rows(manifest_path):
+    # read existing crops manifest rows to carry over when resuming; empty if absent
+    if not manifest_path or not os.path.isfile(manifest_path):
+        return []
+    df = pd.read_parquet(manifest_path)
+    return df.to_dict("records")
+
+
+def dedupe_rows(rows, key):
+    # keep the first row seen per key so a resumed clip/crop is never duplicated
+    seen = set()
+    out = []
+    for r in rows:
+        k = r[key]
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(r)
+    return out
+
+
+def write_detection_log(detect_log_path, rows):
+    parent = os.path.dirname(detect_log_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(detect_log_path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=DETECT_LOG_COLUMNS)
+        w.writeheader()
+        for r in rows:
+            w.writerow({k: r[k] for k in DETECT_LOG_COLUMNS})
+
+
+def run(raw, out, manifest_path, config, official, detector=None, frame_reader=None,
+        detect_log="data/manifests/detection_log.csv", resume=False):
     # orchestration entry; detector and frame_reader are injectable seams so the
     # whole pipeline is exercisable on synthetic inputs with no corpus/mediapipe/GPU
     built = detector is None
@@ -167,32 +282,67 @@ def run(raw, out, manifest_path, config, official, detector=None, frame_reader=N
     if frame_reader is None:
         frame_reader = sample_frames
 
+    # resume keys on clip_id already present in detect_log; carry over the prior
+    # detection rows and manifest rows so the merged outputs keep the earlier work
+    done = load_done_clips(detect_log) if resume else set()
+    carry_detect = load_detection_rows(detect_log) if resume else []
+    carry_manifest = load_manifest_rows(manifest_path) if resume else []
+
     rows = []
-    for method in METHODS:
+    detect_rows = []
+    skipped = 0
+    for method in tqdm(METHODS, desc="methods"):
         vids = glob.glob(os.path.join(raw, method, "*.mp4"))
-        for vid in vids:
+        for vid in tqdm(vids, desc=method, leave=False):
             clip_id = os.path.splitext(os.path.basename(vid))[0]
+            if clip_id in done:
+                # already recorded in a prior run: do not re-read/detect/rewrite
+                skipped += 1
+                continue
             source_id = clip_id.split("_")[0]
             osplit = official.get(source_id, "train")
             out_dir = os.path.join(out, method, clip_id)
             frames = frame_reader(vid, config["frames"])
-            clip_rows, _ = process_clip(
+            clip_rows, faces_detected = process_clip(
                 detector, frames, method, clip_id, source_id, osplit,
                 out_dir, config["size"], config["margin"], config["compression"])
             rows.extend(clip_rows)
+            frames_sampled = len(frames)
+            label = 0 if method == "real" else 1
+            detect_rows.append({
+                "clip_id": clip_id,
+                "method": method,
+                "label": label,
+                "frames_sampled": frames_sampled,
+                "faces_detected": faces_detected,
+                "detection_rate": detection_rate(faces_detected, frames_sampled),
+            })
         print(method, "done")
 
     if built and hasattr(detector, "close"):
         detector.close()
 
+    if resume and skipped:
+        print("resume: skipped", skipped, "clips already in", detect_log)
+
+    # merge carried-over and fresh rows; dedupe so no clip_id/crop_id is duplicated.
+    # fresh rows come first so a reprocessed clip overrides its carried-over copy.
+    all_manifest = dedupe_rows(rows + carry_manifest, "crop_id")
+    all_detect = dedupe_rows(detect_rows + carry_detect, "clip_id")
+
     # write the manifest with the committed column order; fail loudly on drift
-    df = pd.DataFrame(rows, columns=CROP_COLUMNS)
+    df = pd.DataFrame(all_manifest, columns=CROP_COLUMNS)
     assert list(df.columns) == CROP_COLUMNS, "crops manifest schema drift"
     manifest_dir = os.path.dirname(manifest_path)
     if manifest_dir:
         os.makedirs(manifest_dir, exist_ok=True)
     df.to_parquet(manifest_path, index=False)
     print("wrote", manifest_path, len(df), "crops")
+
+    write_detection_log(detect_log, all_detect)
+    print("wrote", detect_log, len(all_detect), "clips")
+
+    print_detection_summary(summarize_detection(all_detect))
     return 0
 
 
@@ -204,6 +354,12 @@ def main():
     ap.add_argument("--raw", required=True)
     ap.add_argument("--out", default="data/processed")
     ap.add_argument("--manifest", default="data/manifests/crops.parquet")
+    ap.add_argument("--detect-log", default="data/manifests/detection_log.csv",
+                    help="per-clip face-detection success-rate log "
+                         "(default: data/manifests/detection_log.csv)")
+    ap.add_argument("--resume", action="store_true",
+                    help="skip clips already recorded in the existing detect-log "
+                         "and merge rather than overwrite prior work")
     ap.add_argument("--official-splits", default="")
     ap.add_argument("--config", default="",
                     help="optional YAML overriding the documented defaults")
@@ -229,7 +385,8 @@ def main():
 
     official = load_official_split(args.official_splits)
     write_config_sidecar(args.out, config)
-    raise SystemExit(run(args.raw, args.out, args.manifest, config, official))
+    raise SystemExit(run(args.raw, args.out, args.manifest, config, official,
+                         detect_log=args.detect_log, resume=args.resume))
 
 
 if __name__ == "__main__":
