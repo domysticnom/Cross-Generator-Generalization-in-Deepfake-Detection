@@ -21,19 +21,58 @@ NATIVE_DIRS = {
 }
 
 
-def resolve_native_dir(root, native_rel):
-    # the native path relative to the dataset root
+# flat Kaggle-mirror layout (e.g. xdxd003/ff-c23): method-named dirs holding the
+# mp4s directly, wrapped in one extra folder like FaceForensics++_C23/. Note the
+# name differences: "original" is real, and "Deepfakes" (lowercase f) is DeepFakes.
+# The mirror also ships FaceShifter, DeepFakeDetection, and csv/ which we ignore.
+MIRROR_DIRS = {
+    "real": "original",
+    "DeepFakes": "Deepfakes",
+    "Face2Face": "Face2Face",
+    "FaceSwap": "FaceSwap",
+    "NeuralTextures": "NeuralTextures",
+}
+
+
+def has_mp4(d):
+    return bool(glob.glob(os.path.join(d, "*.mp4")))
+
+
+def find_official(root, native_rel):
+    # the official nested layout: original_sequences/.../c23/videos, etc.
     direct = os.path.join(root, *native_rel.split("/"))
     if os.path.isdir(direct):
         return direct
-    # fallback: a Kaggle zip often extracts into one extra nested folder,
-    # so look for the native tail anywhere under root
     tail = os.path.join(*native_rel.split("/"))
     for cur, _dirs, _files in os.walk(root):
         cand = os.path.join(cur, tail)
         if os.path.isdir(cand):
             return cand
-    return direct  # does not exist; caller reports a count of 0
+    return None
+
+
+def find_mirror(root, mirror_name):
+    # a dir named exactly mirror_name holding mp4s directly, anywhere under root
+    # (handles the extra FaceForensics++_C23/ wrapper the mirror zip adds)
+    direct = os.path.join(root, mirror_name)
+    if os.path.isdir(direct) and has_mp4(direct):
+        return direct
+    for cur, _dirs, _files in os.walk(root):
+        if os.path.basename(cur) == mirror_name and has_mp4(cur):
+            return cur
+    return None
+
+
+def resolve_method_dir(root, method):
+    # try the official nested layout first, then the flat Kaggle-mirror layout
+    off = find_official(root, NATIVE_DIRS[method])
+    if off and has_mp4(off):
+        return off
+    mir = find_mirror(root, MIRROR_DIRS[method])
+    if mir:
+        return mir
+    # nothing resolved; return the official direct path so counts report 0
+    return os.path.join(root, *NATIVE_DIRS[method].split("/"))
 
 
 def list_videos(src_dir):
@@ -46,7 +85,7 @@ def build_plan(root, raw):
     # one entry per method: (method, source_dir, dest_dir, [source videos])
     plan = []
     for method in METHODS:
-        src = resolve_native_dir(root, NATIVE_DIRS[method]) if root else None
+        src = resolve_method_dir(root, method) if root else None
         dst = os.path.join(raw, method)
         plan.append((method, src, dst, list_videos(src)))
     return plan
