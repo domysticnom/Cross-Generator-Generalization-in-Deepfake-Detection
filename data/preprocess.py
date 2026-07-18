@@ -218,14 +218,18 @@ def print_detection_summary(summary):
 
 
 def load_done_clips(detect_log_path):
-    # the detection log doubles as the resume ledger: read the clip_ids already
-    # recorded so a resumed run skips them. Missing file means nothing is done yet.
+    # the detection log doubles as the resume ledger: read the (method, clip_id)
+    # pairs already recorded so a resumed run skips them. Missing file means nothing
+    # is done yet. The key is method-scoped because FF++ reuses source-pair
+    # filenames across methods (000_003.mp4 exists under both DeepFakes and
+    # Face2Face with clip_id 000_003), so a clip_id-only key would wrongly skip the
+    # second method's clip and under-cache the fakes.
     done = set()
     if not detect_log_path or not os.path.isfile(detect_log_path):
         return done
     with open(detect_log_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            done.add(row["clip_id"])
+            done.add((row["method"], row["clip_id"]))
     return done
 
 
@@ -249,11 +253,15 @@ def load_manifest_rows(manifest_path):
 
 
 def dedupe_rows(rows, key):
+    # key is a single column name, or a tuple of column names for a composite key.
     # keep the first row seen per key so a resumed clip/crop is never duplicated
     seen = set()
     out = []
     for r in rows:
-        k = r[key]
+        if isinstance(key, tuple):
+            k = tuple(r[c] for c in key)
+        else:
+            k = r[key]
         if k in seen:
             continue
         seen.add(k)
@@ -282,8 +290,8 @@ def run(raw, out, manifest_path, config, official, detector=None, frame_reader=N
     if frame_reader is None:
         frame_reader = sample_frames
 
-    # resume keys on clip_id already present in detect_log; carry over the prior
-    # detection rows and manifest rows so the merged outputs keep the earlier work
+    # resume keys on (method, clip_id) already present in detect_log; carry over the
+    # prior detection rows and manifest rows so the merged outputs keep earlier work
     done = load_done_clips(detect_log) if resume else set()
     carry_detect = load_detection_rows(detect_log) if resume else []
     carry_manifest = load_manifest_rows(manifest_path) if resume else []
@@ -295,8 +303,10 @@ def run(raw, out, manifest_path, config, official, detector=None, frame_reader=N
         vids = glob.glob(os.path.join(raw, method, "*.mp4"))
         for vid in tqdm(vids, desc=method, leave=False):
             clip_id = os.path.splitext(os.path.basename(vid))[0]
-            if clip_id in done:
-                # already recorded in a prior run: do not re-read/detect/rewrite
+            if (method, clip_id) in done:
+                # already recorded in a prior run: do not re-read/detect/rewrite.
+                # keyed on (method, clip_id) so the same clip_id under another
+                # method is still processed rather than skipped
                 skipped += 1
                 continue
             source_id = clip_id.split("_")[0]
@@ -328,7 +338,7 @@ def run(raw, out, manifest_path, config, official, detector=None, frame_reader=N
     # merge carried-over and fresh rows; dedupe so no clip_id/crop_id is duplicated.
     # fresh rows come first so a reprocessed clip overrides its carried-over copy.
     all_manifest = dedupe_rows(rows + carry_manifest, "crop_id")
-    all_detect = dedupe_rows(detect_rows + carry_detect, "clip_id")
+    all_detect = dedupe_rows(detect_rows + carry_detect, ("method", "clip_id"))
 
     # write the manifest with the committed column order; fail loudly on drift
     df = pd.DataFrame(all_manifest, columns=CROP_COLUMNS)
