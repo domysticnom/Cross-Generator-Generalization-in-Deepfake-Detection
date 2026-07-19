@@ -24,8 +24,8 @@ A run is only really DONE when its results JSON is on `main`. Until then it stay
 | efficientnet_holdout-face2face | | todo |
 | efficientnet_holdout-faceswap | | todo |
 | efficientnet_holdout-neuraltextures | | todo |
-| xception_holdout-deepfakes | | todo |
-| xception_holdout-face2face | | todo |
+| xception_holdout-deepfakes | Lyxelis | claimed (wrote the config) |
+| xception_holdout-face2face | Lyxelis | claimed (wrote the config) |
 | xception_holdout-faceswap | | todo |
 | xception_holdout-neuraltextures | | todo |
 
