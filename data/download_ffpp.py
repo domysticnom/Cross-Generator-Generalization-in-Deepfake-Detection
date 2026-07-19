@@ -107,14 +107,28 @@ def place_file(src, dst, mode):
     return "placed"
 
 
+def find_kaggle():
+    exe = shutil.which("kaggle")
+    if exe:
+        return exe
+    # pip install --user puts the CLI in ~/.local/bin, which is often not on PATH
+    for d in ("~/.local/bin", "~/.local/Scripts"):
+        for name in ("kaggle", "kaggle.exe"):
+            cand = os.path.expanduser(os.path.join(d, name))
+            if os.path.exists(cand):
+                return cand
+    return None
+
+
 def kaggle_download(dataset, download_dir):
-    if shutil.which("kaggle") is None:
-        print("kaggle CLI not found on PATH.")
-        print("Install it and set KAGGLE_USERNAME / KAGGLE_KEY, then retry.")
-        print("See docs/DATASET_ACCESS.md for the full setup.")
+    exe = find_kaggle()
+    if exe is None:
+        print("kaggle CLI not found (checked PATH and ~/.local/bin).")
+        print("Install it (pip install --user kaggle) and add ~/.local/bin to PATH,")
+        print("then set KAGGLE_USERNAME / KAGGLE_KEY. See docs/DATASET_ACCESS.md.")
         return False
     os.makedirs(download_dir, exist_ok=True)
-    cmd = ["kaggle", "datasets", "download", "-d", dataset, "-p", download_dir, "--unzip"]
+    cmd = [exe, "datasets", "download", "-d", dataset, "-p", download_dir, "--unzip"]
     print("running:", " ".join(cmd))
     return subprocess.run(cmd).returncode == 0
 
