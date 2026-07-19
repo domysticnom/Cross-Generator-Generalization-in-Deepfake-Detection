@@ -23,6 +23,14 @@ data/processed/
 data/cache/
 data/splits/*.parquet
 
+# Per-machine preprocessing manifests: paths point at the local data/processed
+# crops cache and the detection log doubles as the resume ledger, so committing
+# them makes another machine skip preprocessing yet find no crops. Regenerated
+# per-VM by data/preprocess.py. (ff_inventory.csv / preprocess_config.json stay
+# tracked as machine-independent provenance.)
+data/manifests/crops.parquet
+data/manifests/detection_log.csv
+
 # Machine-local run-config overrides (per-VM amp/batch tweaks; the committed
 # configs/*.yaml stay the source of truth for each run)
 configs/_local/
