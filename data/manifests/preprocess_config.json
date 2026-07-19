@@ -1,0 +1,11 @@
+{
+  "frames": 20,
+  "size": 256,
+  "margin": 0.3,
+  "confidence": 0.5,
+  "seed": 1337,
+  "compression": "c23",
+  "numpy": "2.4.1",
+  "cv2": "5.0.0",
+  "mediapipe": "0.10.35"
+}
