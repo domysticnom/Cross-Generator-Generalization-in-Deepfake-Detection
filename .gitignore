@@ -22,6 +22,10 @@ data/interim/
 data/processed/
 data/cache/
 data/splits/*.parquet
+
+# Machine-local run-config overrides (per-VM amp/batch tweaks; the committed
+# configs/*.yaml stay the source of truth for each run)
+configs/_local/
 *.mp4
 *.avi
 *.mov
