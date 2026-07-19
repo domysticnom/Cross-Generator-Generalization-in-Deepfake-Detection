@@ -1,0 +1,21 @@
+run_name: efficientnet_holdout-deepfakes
+seed: 1337
+
+backbone: efficientnet_b4
+pretrained: true
+input_size: 224
+
+manifest: data/manifests/crops.parquet
+split: data/splits/holdout-deepfakes.csv
+held_out_method: DeepFakes
+
+epochs: 15
+batch_size: 64
+lr: 0.0003
+amp: bf16
+checkpoint_dir: checkpoints/efficientnet_holdout-deepfakes
+
+video_level: true
+extra_test_sets:
+  - name: SimSwap
+    split: data/splits/simswap-test.csv
