@@ -21,7 +21,7 @@ A run is only really DONE when its results JSON is on `main`. Until then it stay
 | Run | Owner | Status |
 |-----|-------|--------|
 | efficientnet_holdout-deepfakes | Jonathan | in progress (on `jonathan/work-on-model` side branch; needs reconciling with main before the result counts) |
-| efficientnet_holdout-face2face | | todo |
+| efficientnet_holdout-face2face | Obinna | in progress |
 | efficientnet_holdout-faceswap | | todo |
 | efficientnet_holdout-neuraltextures | | todo |
 | xception_holdout-deepfakes | Lyxelis | claimed (wrote the config) |
