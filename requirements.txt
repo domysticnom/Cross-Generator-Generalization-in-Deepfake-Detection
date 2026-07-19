@@ -10,9 +10,12 @@
 # ---------------------------------------------------------------------------
 
 # Core numerics / data handling
-numpy>=2.0
-pandas>=2.0
-opencv-python>=4.10          # use opencv-python-headless on headless machines
+# numpy capped below 2: mediapipe + tensorflow on the school VM are compiled
+# against numpy 1.x and crash under numpy 2 (numpy.dtype size changed).
+numpy>=1.26,<2
+pandas>=2.0,<3
+opencv-python>=4.10,<5       # opencv 5 requires numpy>=2; use opencv-python-headless on headless machines
+protobuf>=3.20.3,<5          # tensorflow 2.16 (via mediapipe) rejects protobuf 5+; keep in the 4.x window
 
 # Video decoding (offline preprocessing pass)
 torchcodec>=0.8
