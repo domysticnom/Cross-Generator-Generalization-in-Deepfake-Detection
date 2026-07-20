@@ -9,24 +9,58 @@ rather than a single in-distribution accuracy number. A pretrained **SimSwap**
 face-swap generator is used to synthesize a fifth, self-produced "unseen
 generator" test set, adding a generative component to the pipeline.
 
-> **Status:** Skeleton / scaffolding. This is the initial repository structure
-> for the data-pipeline and infrastructure milestone. Implementation lands in
-> subsequent commits.
+> **Status:** The pipeline runs end to end — dataset acquisition, face-crop preprocessing,
+> leave-one-out splits, training, evaluation, and transfer-matrix assembly. The eight
+> training runs are in progress; see [`RUNS.md`](RUNS.md) for the board.
 
 ## Team
 
-Dominic Rivas, Jonathan Jude Regalado, Lyxelis Rodriguez Navarro,
-Obinna Okonkwo, Sagar Ayare
+| Member | Role |
+|---|---|
+| Dominic Rivas | Principal researcher |
+| Jonathan Jude Regalado | Principal researcher |
+| Lyxelis Rodriguez Navarro | Principal researcher |
+| Obinna Okonkwo | Principal researcher |
+| Sagar Ayare | Principal researcher |
+
+Every member independently trains and evaluates an assigned run so the transfer matrix is
+produced in parallel. Run ownership is tracked in [`RUNS.md`](RUNS.md).
+
+## Documentation
+
+| Doc | Covers |
+|---|---|
+| [`docs/RESEARCH.md`](docs/RESEARCH.md) | Objectives, literature review, backbone benchmarking, preliminary experiments |
+| [`docs/MODEL.md`](docs/MODEL.md) | Detector architecture, training, evaluation, known gaps |
+| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Setup through a finished run |
+| [`docs/INTERFACES.md`](docs/INTERFACES.md) | Contracts every module and run agrees on |
+| [`docs/DATASET_ACCESS.md`](docs/DATASET_ACCESS.md) | Obtaining FaceForensics++ |
+| [`RUNS.md`](RUNS.md) | Who owns which of the eight runs |
+
+## Usage
+
+Three notebooks, run in order:
+
+```
+experiments/00_setup_and_preprocess.ipynb   # install, download, face-crop cache, splits
+experiments/01_train.ipynb                  # claim a run, train, evaluate
+experiments/02_transfer_matrix.ipynb        # assemble the cross-generator matrix
+```
+
+`00` installs its own pinned stack (torch 2.4.1+cu121, then a numpy-1.x island for
+mediapipe), so run it before anything else. The CLI equivalent is in
+[`docs/QUICKSTART.md`](docs/QUICKSTART.md).
 
 ## Repository structure
 
 ```
 .
-├── data/          # Dataset notes + preprocessing/loading scripts (FF++, splits, SimSwap set)
-├── models/        # Detector implementations (EfficientNet, XceptionNet) + generator wrapper
-├── experiments/   # Notebooks, training runs, results (EDA, transfer matrix)
-├── configs/       # YAML hyperparameter / path configs (reproducible, per-machine overrides)
-├── docs/          # Proposal, reports, figures
+├── data/          # Acquisition, face-crop preprocessing, splits, crop loading
+├── models/        # detector.py (timm backbones) + simswap_generator.py
+├── experiments/   # 00/01/02 notebooks, train.py, evaluate.py, transfer_matrix.py, results
+├── configs/       # One YAML per run (8 runs) + preprocess.yaml
+├── docs/          # Research, model, quickstart, interfaces, dataset access
+├── tests/         # Unit tests for preprocessing and inventory
 ├── requirements.txt
 └── README.md
 ```
@@ -52,25 +86,35 @@ not train or fine-tune a generator from scratch.
 
 Python **3.11** is recommended.
 
+**Easiest path:** run `experiments/00_setup_and_preprocess.ipynb`, which installs the
+pinned stack in the right order and then builds the crop cache.
+
+To install manually, order matters — torch first, then requirements, then the numpy-1.x
+pins that mediapipe needs:
+
 ```bash
 # 1. Create and activate an environment
 python -m venv .venv
 # Windows:  .venv\Scripts\activate
 # Unix:     source .venv/bin/activate
 
-# 2. Install PyTorch FIRST from the cu128 wheel index (NOT plain PyPI).
-#    The default PyPI torch wheel lacks sm_120 kernels required by RTX 50-series GPUs.
-pip install torch==2.9.* torchvision==0.24.* torchaudio==2.9.* \
-    --index-url https://download.pytorch.org/whl/cu128
+# 2. Install PyTorch FIRST from a CUDA wheel index, NOT plain PyPI.
+#    cu121 matches the school VM's driver; pick the wheel matching your own.
+pip install torch==2.4.1 torchvision==0.19.1 \
+    --index-url https://download.pytorch.org/whl/cu121
+# macOS (no CUDA, runs on CPU/MPS):  pip install torch torchvision
 
 # 3. Install the rest
 pip install -r requirements.txt
+
+# 4. mediapipe/TensorFlow need numpy 1.x, so re-pin after requirements
+pip install "numpy<2" "opencv-python-headless<5" "protobuf>=3.20.3,<5"
 ```
 
 `ffmpeg` (6.x/7.x) must be available on the system PATH for video decoding.
 
-Verify the install with `python check_env.py`. For the full per-run workflow,
-see `docs/QUICKSTART.md`, and for the module/run contracts see `docs/INTERFACES.md`.
+Verify with `python check_env.py`. Per-run workflow: `docs/QUICKSTART.md`. Module contracts:
+`docs/INTERFACES.md`.
 
 ## Method overview
 
