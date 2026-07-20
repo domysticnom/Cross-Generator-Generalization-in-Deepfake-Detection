@@ -22,6 +22,15 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
 
 
+def resolve_device():
+    # cuda on the GPU boxes, mps so Apple-silicon laptops are not stuck on cpu
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
@@ -29,7 +38,8 @@ def main():
     cfg = yaml.safe_load(open(args.config))
     set_seed(cfg["seed"])
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = resolve_device()
+    print("device", device)
     train_methods = [m for m in FFPP_METHODS if m != cfg["held_out_method"]] + ["real"]
 
     train_ds = CropDataset(cfg["manifest"], cfg["split"], "train", cfg["input_size"], train_methods)
@@ -50,7 +60,8 @@ def main():
         for img, label, _, _ in train_dl:
             img, label = img.to(device), label.to(device)
             opt.zero_grad()
-            with torch.autocast(device_type="cuda", dtype=amp_dtype, enabled=use_amp):
+            with torch.autocast(device_type="cuda" if use_amp else "cpu",
+                                dtype=amp_dtype, enabled=use_amp):
                 loss = loss_fn(model(img), label)
             loss.backward()
             opt.step()

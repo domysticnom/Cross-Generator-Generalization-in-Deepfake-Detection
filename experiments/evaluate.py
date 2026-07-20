@@ -17,6 +17,15 @@ from data.dataset import CropDataset
 FFPP_METHODS = ["DeepFakes", "Face2Face", "FaceSwap", "NeuralTextures"]
 
 
+def resolve_device():
+    # cuda on the GPU boxes, mps so Apple-silicon laptops are not stuck on cpu
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def predict(model, ds, device, batch_size):
     dl = DataLoader(ds, batch_size=batch_size, num_workers=4)
     probs, labels, clips = [], [], []
@@ -62,7 +71,8 @@ def main():
     ap.add_argument("--config", required=True)
     args = ap.parse_args()
     cfg = yaml.safe_load(open(args.config))
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = resolve_device()
+    print("device", device)
 
     ckpt = torch.load(os.path.join(cfg["checkpoint_dir"], "model.pt"), map_location=device)
     model = build_model(cfg["backbone"], pretrained=False).to(device)
