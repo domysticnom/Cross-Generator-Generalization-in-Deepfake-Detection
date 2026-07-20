@@ -9,7 +9,7 @@ rather than a single in-distribution accuracy number. A pretrained **SimSwap**
 face-swap generator is used to synthesize a fifth, self-produced "unseen
 generator" test set, adding a generative component to the pipeline.
 
-> **Status:** The pipeline runs end to end — dataset acquisition, face-crop preprocessing,
+> **Status:** The pipeline runs end to end: dataset acquisition, face-crop preprocessing,
 > leave-one-out splits, training, evaluation, and transfer-matrix assembly. The eight
 > training runs are in progress; see [`RUNS.md`](RUNS.md) for the board.
 
@@ -89,7 +89,7 @@ Python **3.11** is recommended.
 **Easiest path:** run `experiments/00_setup_and_preprocess.ipynb`, which installs the
 pinned stack in the right order and then builds the crop cache.
 
-To install manually, order matters — torch first, then requirements, then the numpy-1.x
+To install manually, order matters: torch first, then requirements, then the numpy-1.x
 pins that mediapipe needs:
 
 ```bash
