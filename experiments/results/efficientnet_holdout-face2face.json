@@ -1,0 +1,18 @@
+{
+  "run_name": "efficientnet_holdout-face2face",
+  "backbone": "efficientnet_b4",
+  "held_out_method": "Face2Face",
+  "seed": 1337,
+  "level": "video",
+  "results": [
+    {
+      "auc": NaN,
+      "acc": 0.4346,
+      "precision": 1.0,
+      "recall": 0.4346,
+      "f1": 0.6059,
+      "tested_on": "Face2Face",
+      "seen": false
+    }
+  ]
+}
