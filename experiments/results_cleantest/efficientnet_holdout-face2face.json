@@ -1,0 +1,54 @@
+{
+  "run_name": "efficientnet_holdout-face2face_cleantest",
+  "backbone": "efficientnet_b4",
+  "held_out_method": "Face2Face",
+  "seed": 1337,
+  "level": "video",
+  "results": [
+    {
+      "auc": 0.9964,
+      "acc": 0.9531,
+      "precision": 0.92,
+      "recall": 0.9928,
+      "f1": 0.955,
+      "tested_on": "DeepFakes",
+      "seen": true
+    },
+    {
+      "auc": 0.8563,
+      "acc": 0.7464,
+      "precision": 0.8632,
+      "recall": 0.5857,
+      "f1": 0.6979,
+      "tested_on": "Face2Face",
+      "seen": false
+    },
+    {
+      "auc": 0.9964,
+      "acc": 0.9531,
+      "precision": 0.92,
+      "recall": 0.9928,
+      "f1": 0.955,
+      "tested_on": "FaceSwap",
+      "seen": true
+    },
+    {
+      "auc": 0.9844,
+      "acc": 0.9422,
+      "precision": 0.9184,
+      "recall": 0.9712,
+      "f1": 0.9441,
+      "tested_on": "NeuralTextures",
+      "seen": true
+    },
+    {
+      "auc": 0.8914,
+      "acc": 0.7964,
+      "precision": 0.8807,
+      "recall": 0.6857,
+      "f1": 0.7711,
+      "tested_on": "SimSwap",
+      "seen": false
+    }
+  ]
+}
