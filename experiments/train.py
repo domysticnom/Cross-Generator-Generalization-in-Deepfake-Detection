@@ -34,6 +34,9 @@ def resolve_device():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
+    ap.add_argument("--resume", action="store_true",
+                    help="continue from the checkpoint in checkpoint_dir if one exists "
+                         "(default: retrain from scratch, as before)")
     args = ap.parse_args()
     cfg = yaml.safe_load(open(args.config))
     set_seed(cfg["seed"])
@@ -54,7 +57,34 @@ def main():
     amp_dtype = torch.bfloat16 if cfg.get("amp") == "bf16" else torch.float16
     use_amp = cfg.get("amp") is not None and device == "cuda"
 
-    for epoch in range(cfg["epochs"]):
+    # checkpoint every epoch, not just at the end: a 15-epoch run is 1-2 hours and a
+    # crash / sleep / driver reset at epoch 14 would otherwise cost the whole thing.
+    os.makedirs(cfg["checkpoint_dir"], exist_ok=True)
+    path = os.path.join(cfg["checkpoint_dir"], "model.pt")
+
+    def save(epoch):
+        # write-then-replace so a kill mid-write cannot truncate an existing model.pt.
+        # "model" stays the top-level key evaluate.py reads; the rest is additive.
+        tmp = path + ".tmp"
+        torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),
+                    "epoch": epoch, "config": cfg}, tmp)
+        os.replace(tmp, path)
+
+    # resume is OPT-IN so the default behaviour is unchanged for everyone else:
+    # without --resume this still retrains from scratch exactly as before.
+    start_epoch = 0
+    if args.resume and os.path.exists(path):
+        ckpt = torch.load(path, map_location=device)
+        model.load_state_dict(ckpt["model"])
+        if "optimizer" in ckpt:
+            opt.load_state_dict(ckpt["optimizer"])
+        start_epoch = ckpt.get("epoch", -1) + 1
+        if start_epoch >= cfg["epochs"]:
+            print(f"resume: {path} already has all {cfg['epochs']} epochs, nothing to do")
+            return
+        print(f"resume: continuing from epoch {start_epoch + 1}/{cfg['epochs']}")
+
+    for epoch in range(start_epoch, cfg["epochs"]):
         model.train()
         running = 0.0
         for img, label, _, _ in train_dl:
@@ -77,9 +107,8 @@ def main():
                 n += len(label)
         print(f"           val_acc {correct / max(n, 1):.4f}")
 
-    os.makedirs(cfg["checkpoint_dir"], exist_ok=True)
-    path = os.path.join(cfg["checkpoint_dir"], "model.pt")
-    torch.save({"model": model.state_dict(), "config": cfg}, path)
+        save(epoch)
+
     print("saved", path)
 
 

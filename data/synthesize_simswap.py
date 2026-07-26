@@ -10,9 +10,15 @@ import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.simswap_generator import SimSwapGenerator
+# reuse the FF++ detector/crop rather than a second copy: these crops must land in
+# the same manifest as the FF++ ones, so the crop convention has to be identical by
+# construction, not by restating it. preprocess also already migrated off the
+# mediapipe `solutions` API, which was removed in the 2026 builds.
+from data.preprocess import make_detector, crop_face
 
- """Samples exactly n evenly spaced frames from the given video."""
+
 def sample_frames(path, n):
+    """Samples exactly n evenly spaced frames from the given video."""
     cap = cv2.VideoCapture(path)
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
@@ -34,8 +40,8 @@ def sample_frames(path, n):
     cap.release()
     return frames
 
-"""Extracts the middle frame of a video to use as the source identity."""
 def middle_frame(path):
+    """Extracts the middle frame of a video to use as the source identity."""
     cap = cv2.VideoCapture(path)
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.set(cv2.CAP_PROP_POS_FRAMES, max(total // 2 - 1, 0))
@@ -43,29 +49,10 @@ def middle_frame(path):
     cap.release()
     return frame if ok else None
 
-  """
-    Detects and crops a face using MediaPipe.
-    Maintains the same crop convention as FF++ to allow cached matching.
-    """
-def crop_face_simple(fd, img_rgb, margin=0.3, size=256):
-    h, w = img_rgb.shape[:2]
-    res = fd.process(img_rgb)
-    if not res.detections:
-        return None
-    
-    # Get bounding box coordinates and rescale to image pixels
-    box = res.detections[0].location_data.relative_bounding_box
-    x, y = int(box.xmin * w), int(box.ymin * h)
-    bw, bh = int(box.width * w), int(box.height * h)
-    
-    # Add a margin to the bounding box
-    mx, my = int(bw * margin), int(bh * margin)
-    x0, y0 = max(0, x - mx), max(0, y - my)
-    x1, y1 = min(w, x + bw + mx), min(h, y + bh + my)
-    face = img_rgb[y0:y1, x0:x1]
-    if face.size == 0:
-        return None
-    return cv2.resize(face, (size, size))   # Resize cropped face to standard size
+# Face detection + cropping is imported from data/preprocess.py (make_detector /
+# crop_face) so SimSwap crops match the FF++ cache exactly: same detector, same
+# margin, same output size. The previous local copy duplicated that logic and used
+# the removed `mp.solutions` API.
 
 
 # Setup argument parser to manage input paths, output configs, and generator settings
@@ -94,9 +81,8 @@ def main():
     if len(clips) < 2:
         sys.exit(f"need at least 2 real clips in {args.raw}, found {len(clips)}")
 
-    # Initialize MediaPipe Face Detection and SimSwap Generator
-    import mediapipe as mp
-    fd = mp.solutions.face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5)
+    # Initialize the FF++ face detector (mediapipe Tasks API) and SimSwap generator
+    fd = make_detector(0.5)
     gen = SimSwapGenerator(args.weights_dir, args.simswap_repo)
 
     # Pick target clips and generate swap pairs
@@ -118,20 +104,28 @@ def main():
             n_fail += 1
             continue
 
+        # embed the source identity ONCE per pair instead of once per frame:
+        # the source is constant across the whole clip, and its face detection is
+        # the CPU-bound step
+        source_latent = gen.prepare_source(source_frame)
+        if source_latent is None:
+            n_fail += 1
+            continue
+
         clip_id = f"{source_id}_to_{target_id}"
         out_dir = os.path.join(args.out, clip_id)
         os.makedirs(out_dir, exist_ok=True)
 
          # Iterate over frames in the target video and apply the face swap
         for fidx, frame_bgr in sample_frames(target_path, args.frames):
-            swapped_bgr = gen.swap(source_frame, frame_bgr)
+            swapped_bgr = gen.swap(source_frame, frame_bgr, source_latent=source_latent)
             if swapped_bgr is None:
                 n_fail += 1
                 continue
 
-            # Convert swapped result to RGB for MediaPipe detection    
+            # Convert swapped result to RGB for MediaPipe detection
             swapped_rgb = cv2.cvtColor(swapped_bgr, cv2.COLOR_BGR2RGB)
-            face = crop_face_simple(fd, swapped_rgb)
+            face = crop_face(fd, swapped_rgb)
             if face is None:
                 n_fail += 1
                 continue
@@ -174,10 +168,27 @@ def main():
     combined.to_parquet(args.manifest, index=False)
     print("updated manifest:", args.manifest, "total rows:", len(combined))
 
-    split_df = pd.DataFrame({"crop_id": new_df["crop_id"], "role": "test"})
+    # The split MUST carry real negatives. evaluate.py scores every method as
+    # "real vs that method"; a SimSwap-only split is single-class, so
+    # roc_auc_score raises ValueError, evaluate.py catches it, and the SimSwap
+    # column lands in the transfer matrix as NaN. Use the real clips from the
+    # official FF++ test split, matching how the held-out FF++ methods are scored.
+    real_test = combined[(combined["method"] == "real") &
+                         (combined["official_split"] == "test")]["crop_id"]
+    if real_test.empty:
+        print("WARNING: no real crops tagged official_split='test' in the manifest, so "
+              "the SimSwap set has no negatives and its AUC will be NaN. Re-run "
+              "preprocess with --official-splits, or repair the manifest with "
+              "data/tag_official_splits.py, then re-run this script.")
+
+    split_df = pd.DataFrame({
+        "crop_id": pd.concat([new_df["crop_id"], real_test], ignore_index=True),
+        "role": "test",
+    })
     os.makedirs(os.path.dirname(args.split_out), exist_ok=True)
     split_df.to_csv(args.split_out, index=False)
-    print("wrote split:", args.split_out, len(split_df), "rows")
+    print(f"wrote split: {args.split_out} {len(split_df)} rows "
+          f"({len(new_df)} SimSwap + {len(real_test)} real negatives)")
 
 
 if __name__ == "__main__":
