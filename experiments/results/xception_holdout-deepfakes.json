@@ -1,0 +1,45 @@
+{
+  "run_name": "xception_holdout-deepfakes",
+  "backbone": "legacy_xception",
+  "held_out_method": "DeepFakes",
+  "seed": 1337,
+  "level": "video",
+  "results": [
+    {
+      "auc": 0.9157,
+      "acc": 0.6714,
+      "precision": 0.9615,
+      "recall": 0.3571,
+      "f1": 0.5208,
+      "tested_on": "DeepFakes",
+      "seen": false
+    },
+    {
+      "auc": 0.9971,
+      "acc": 0.9819,
+      "precision": 0.9926,
+      "recall": 0.9712,
+      "f1": 0.9818,
+      "tested_on": "Face2Face",
+      "seen": true
+    },
+    {
+      "auc": 0.9994,
+      "acc": 0.9928,
+      "precision": 0.9928,
+      "recall": 0.9928,
+      "f1": 0.9928,
+      "tested_on": "FaceSwap",
+      "seen": true
+    },
+    {
+      "auc": 0.991,
+      "acc": 0.9495,
+      "precision": 0.9921,
+      "recall": 0.9065,
+      "f1": 0.9474,
+      "tested_on": "NeuralTextures",
+      "seen": true
+    }
+  ]
+}
