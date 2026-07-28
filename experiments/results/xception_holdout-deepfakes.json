@@ -42,11 +42,11 @@
       "seen": true
     },
     {
-      "auc": NaN,
-      "acc": 0.3485,
-      "precision": 1.0,
+      "auc": 0.9307,
+      "acc": 0.6409,
+      "precision": 0.9882,
       "recall": 0.3485,
-      "f1": 0.5169,
+      "f1": 0.5153,
       "tested_on": "SimSwap",
       "seen": false
     }
