@@ -25,7 +25,7 @@ A run is only really DONE when its results JSON is on `main`. Until then it stay
 | efficientnet_holdout-faceswap | | todo |
 | efficientnet_holdout-neuraltextures | | todo |
 | xception_holdout-deepfakes | Lyxelis | done (SimSwap column backfilled) |
-| xception_holdout-face2face | Lyxelis | claimed (wrote the config) |
+| xception_holdout-face2face | Lyxelis | done (SimSwap column backfilled) |
 | xception_holdout-faceswap | | todo |
 | xception_holdout-neuraltextures | | todo |
 
