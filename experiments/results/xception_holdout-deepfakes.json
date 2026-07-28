@@ -40,6 +40,15 @@
       "f1": 0.9474,
       "tested_on": "NeuralTextures",
       "seen": true
+    },
+    {
+      "auc": NaN,
+      "acc": 0.3485,
+      "precision": 1.0,
+      "recall": 0.3485,
+      "f1": 0.5169,
+      "tested_on": "SimSwap",
+      "seen": false
     }
   ]
 }
