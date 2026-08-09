@@ -96,18 +96,26 @@ def check_coverage(d, fname, run):
 
 
 def check_below_chance(d, fname, run):
-    """AUC < 0.5 is anti-correlation, not weak generalization.
+    """AUC < 0.5 is anti-correlation, not merely weak generalization.
 
-    A detector that scores 0.36 is reliably ranking fakes as MORE real than
-    reals. That is a sign flip / label-polarity problem somewhere in the eval,
-    and reporting it as 'poor transfer' would be wrong.
+    A detector scoring 0.36 reliably ranks fakes as MORE real than real videos.
+    Two things produce that: a label-polarity bug, or genuine anti-generalization.
+    Distinguish them by checking the SAME method in a run that trained on it --
+    if that is ~0.99, the crops and labels are fine and the effect is real.
+
+    For FaceSwap in this project that check was done: seen runs score 0.9926 to
+    0.9999 on the identical crops, so the below-chance held-out numbers are
+    genuine model behaviour, not a data error. Kept at FAIL because it must never
+    be written up as ordinary 'poor transfer' -- it is a stronger and different
+    claim, and it means a fixed 0.5 threshold is worse than useless there.
     """
     for row in run.get("results", []):
         auc = row.get("auc")
         if isinstance(auc, (int, float)) and not math.isnan(auc) and auc < 0.5:
             record("FAIL", f"{d}/{fname}",
-                   f"AUC={auc} < 0.5 on tested_on={row.get('tested_on')} "
-                   "(worse than chance -> label polarity / threshold bug, not transfer failure)")
+                   f"AUC={auc} < 0.5 on tested_on={row.get('tested_on')} -- anti-correlated: "
+                   "the model ranks these fakes as more real than real video. Confirm against "
+                   "the same method in a run that trained on it before writing it up")
 
 
 def check_auc_acc_divergence(d, fname, run, tol=0.35):
@@ -154,6 +162,40 @@ def check_unseen_aggregation(d, fname, run, spread=0.25):
                f"unseen components disagree by {hi - lo:.2f} ({parts}); "
                f"reporting their mean {mean:.4f} as 'unseen AUC' conflates a held-out "
                "FF++ method with an external generator -- report them separately")
+
+
+def check_simswap_provenance(runs_by_dir):
+    """The SimSwap column must come from ONE set, or it cannot be read as a column.
+
+    Two disjoint SimSwap sets exist in this project's history (a 994-pair set and
+    a 241-pair set, zero crop_id overlap). A run scored against one is not
+    comparable to a run scored against the other, even though both print a number
+    under 'SimSwap'. eval_simswap.py stamps `simswap_split` on every file it
+    scores; a file with a SimSwap row but no stamp predates that and its
+    provenance is unverified.
+    """
+    for d, runs in runs_by_dir.items():
+        stamped, unstamped = {}, []
+        for fname, run in runs.items():
+            has_ss = any(r.get("tested_on") == "SimSwap" for r in run.get("results", []))
+            if not has_ss:
+                continue
+            split = run.get("simswap_split")
+            if split is None:
+                unstamped.append(fname)
+            else:
+                stamped.setdefault(split, []).append(fname)
+
+        if len(stamped) > 1:
+            record("FAIL", d,
+                   "SimSwap column mixes splits: "
+                   + "; ".join(f"{s} <- {sorted(f)}" for s, f in stamped.items())
+                   + " -- values are not comparable down the column")
+        if unstamped and stamped:
+            record("WARN", d,
+                   f"SimSwap scored on {sorted(stamped)[0]} in {len(stamped[sorted(stamped)[0]])} run(s), "
+                   f"but {sorted(unstamped)} carry no simswap_split stamp -- their SimSwap "
+                   "cell came from an unrecorded set and is not comparable to the others")
 
 
 def check_seed_consistency(runs_by_dir):
@@ -216,6 +258,7 @@ def main():
             check_gap_direction(d, fname, run)
             check_unseen_aggregation(d, fname, run)
     check_seed_consistency(runs_by_dir)
+    check_simswap_provenance(runs_by_dir)
 
     order = {"FAIL": 0, "WARN": 1, "INFO": 2}
     findings.sort(key=lambda f: (order.get(f[0], 3), f[1]))

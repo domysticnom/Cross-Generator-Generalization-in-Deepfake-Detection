@@ -43,12 +43,13 @@
     },
     {
       "auc": 0.9139,
-      "acc": 0.7769,
+      "acc": 0.776,
       "precision": 0.9818,
-      "recall": 0.7596,
-      "f1": 0.8565,
+      "recall": 0.7586,
+      "f1": 0.8558,
       "tested_on": "SimSwap",
       "seen": false
     }
-  ]
+  ],
+  "simswap_split": "data/splits/simswap-test.csv"
 }

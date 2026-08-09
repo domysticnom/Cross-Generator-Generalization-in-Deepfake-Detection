@@ -42,13 +42,14 @@
       "seen": true
     },
     {
-      "auc": 0.9253,
-      "acc": 0.7928,
+      "auc": 0.9252,
+      "acc": 0.7919,
       "precision": 0.9859,
-      "recall": 0.7746,
-      "f1": 0.8676,
+      "recall": 0.7736,
+      "f1": 0.867,
       "tested_on": "SimSwap",
       "seen": false
     }
-  ]
+  ],
+  "simswap_split": "data/splits/simswap-test.csv"
 }
