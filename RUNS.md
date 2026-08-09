@@ -50,6 +50,34 @@ originally claimed the run -- see Notes.
   board was never updated -- the claims lived on side branches that `main` could not see.
   Claim runs by pushing THIS file to `main`, not by pushing a branch.
 
+## What `experiments/results_cleantest/` is
+
+It is the **identity-disjoint evaluation** of the same eight runs. Nobody had written
+that down, so it sat in the repo uncitable.
+
+Confirmed by reproducing it: `experiments/leakage_impact.py --subset clean` restricts
+each held-out test set to the 140 identities that never appear in training (~280 clips,
+~5,480 crops, near class-balanced). Its output matches every `results_cleantest` number
+to within 0.0003 AUC, with accuracies identical to 4 decimal places, on all eight runs.
+See `experiments/results/identity_leakage.csv`.
+
+So: `results/` is the leaky evaluation, `results_cleantest/` is the clean one. Cite the
+clean numbers, and say which you are citing.
+
+**The leakage does NOT inflate the headline.** Removing it *raises* held-out AUC in 6 of
+8 folds (mean +0.030, range -0.009 to +0.070). ROC-AUC is rank-based and so is not biased
+by the class-ratio difference between the two subsets, which makes the AUC comparison a
+fair one. Accuracy and recall are not comparable that way -- the clean subset is balanced
+and the full one is ~7:1 fake -- so only AUC should be compared across the two.
+
+The below-chance FaceSwap result survives the correction: 0.362 -> 0.405 (Xception) and
+0.465 -> 0.476 (EfficientNet). Still below chance on both backbones.
+
+Splits are still not identity-disjoint at TRAINING time -- `data/audit_splits.py` fails on
+all four folds and should keep failing until the splits are rebuilt. What the clean
+evaluation shows is that the effect on the reported numbers is small and, where it matters,
+conservative.
+
 ## SimSwap column caveat
 
 The SimSwap column is not comparable across every row. Two disjoint SimSwap sets exist

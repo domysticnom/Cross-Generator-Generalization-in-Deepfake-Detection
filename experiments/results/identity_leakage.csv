@@ -1,0 +1,9 @@
+run_name,backbone,held_out,subset,clips,crops,n_real,n_fake,auc,acc,precision,recall,f1
+efficientnet_holdout-deepfakes,efficientnet_b4,DeepFakes,clean,280,5480,2742,2738,0.9286,0.8429,0.9068,0.7643,0.8295
+efficientnet_holdout-face2face,efficientnet_b4,Face2Face,clean,280,5480,2742,2738,0.8564,0.7464,0.8632,0.5857,0.6979
+efficientnet_holdout-faceswap,efficientnet_b4,FaceSwap,clean,280,5483,2742,2741,0.4762,0.5036,0.5172,0.1071,0.1775
+efficientnet_holdout-neuraltextures,efficientnet_b4,NeuralTextures,clean,280,5484,2742,2742,0.7369,0.525,0.7692,0.0714,0.1307
+xception_holdout-deepfakes,legacy_xception,DeepFakes,clean,280,5480,2742,2738,0.9265,0.8357,0.9519,0.7071,0.8115
+xception_holdout-face2face,legacy_xception,Face2Face,clean,280,5480,2742,2738,0.8006,0.6679,0.8219,0.4286,0.5634
+xception_holdout-faceswap,legacy_xception,FaceSwap,clean,280,5483,2742,2741,0.4053,0.5,0.5,0.0357,0.0667
+xception_holdout-neuraltextures,legacy_xception,NeuralTextures,clean,280,5484,2742,2742,0.7637,0.5857,0.875,0.2,0.3256
