@@ -1,17 +1,10 @@
-"""Re-score ONLY the SimSwap column of an existing run, in place.
-
-Why this exists instead of just re-running evaluate.py: evaluate.py recomputes
-every column and rewrites the whole results JSON. The FF++ columns in some runs
-were produced by other teammates on their own machines, and re-running them here
-would silently replace their numbers with ours. This script touches exactly one
-row -- tested_on == "SimSwap" -- and leaves every other row byte-identical.
-
-The point is to make the SimSwap column comparable across runs. Right now
-different rows of that column were scored against different, non-overlapping
-SimSwap sets, so reading down the column compares test sets, not models.
+"""Re-score only the SimSwap row of an existing run, in place.
 
     python experiments/eval_simswap.py --config configs/<run>.yaml
-    python experiments/eval_simswap.py --config configs/<run>.yaml --limit 256   # smoke test
+    python experiments/eval_simswap.py --config configs/<run>.yaml --limit 256  # smoke test
+
+Not evaluate.py, because that recomputes every column and would overwrite the FF++
+numbers teammates produced on their own machines. This rewrites one row only.
 """
 
 import argparse

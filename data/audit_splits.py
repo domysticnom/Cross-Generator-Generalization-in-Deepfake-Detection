@@ -1,32 +1,9 @@
-"""DATA-05 audit: are the cross-generator splits identity-disjoint?
+"""Check the cross-generator splits are identity-disjoint (DATA-05).
 
-INTERFACES.md Contract 2 calls identity-disjointness a hard invariant "checked by
-an audit script before any training". This is that script; it did not exist while
-the eight runs were produced.
-
-    python data/audit_splits.py                 # audit every fold
+    python data/audit_splits.py                 # every fold
     python data/audit_splits.py --fold FaceSwap # one fold
 
-Exit code 0 if every fold is identity-disjoint, 1 otherwise.
-
-Why identities are parsed and not read from `source_id`
-------------------------------------------------------
-An FF++ fake clip is named `<target>_<donor>` (e.g. 000_003): the video is target
-000's footage carrying donor 003's face. `source_id` in the manifest is only the
-FIRST component, so it records the target and silently drops the donor. For the
-swap methods the donor is the identity you actually see, so an audit keyed on
-`source_id` alone would under-report leakage. SimSwap uses a third convention
-(`<target>_to_<donor>`, with source_id set to the DONOR). This script therefore
-derives the identity set from clip_id directly:
-
-    real            "000"           -> {000}
-    FF++ fake       "000_003"       -> {000, 003}
-    SimSwap         "783_to_632"    -> {783, 632}
-
-Leakage matters because a model that has seen identity 003's face in training as
-a REAL video can recognize that face in test as a FAKE for reasons that have
-nothing to do with manipulation artifacts. That inflates every unseen number,
-which is the project's headline result.
+Exit 0 if every fold is clean, 1 if any fold leaks.
 """
 
 import argparse
@@ -38,13 +15,15 @@ import pandas as pd
 FFPP_METHODS = ["DeepFakes", "Face2Face", "FaceSwap", "NeuralTextures"]
 
 
+# Parse the ids out of clip_id rather than using manifest source_id: an FF++ fake
+# is <target>_<donor> (000_003) and source_id keeps only the target, so it drops the
+# donor -- who is the face you actually see in a swap. Auditing on source_id alone
+# under-reports leakage. SimSwap is <target>_to_<donor> with source_id = the donor.
 def identities(clip_id):
-    """All identities appearing in a clip, from its id."""
     c = str(clip_id)
-    if "_to_" in c:                 # SimSwap: <target>_to_<donor>
+    if "_to_" in c:
         return set(c.split("_to_"))
-    parts = c.split("_")
-    return set(parts)               # "000" -> {000}; "000_003" -> {000, 003}
+    return set(c.split("_"))        # "000" -> {000}; "000_003" -> {000, 003}
 
 
 def audit_fold(manifest, split_path):

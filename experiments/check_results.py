@@ -1,15 +1,9 @@
-"""Sanity checks for the cross-generator transfer results.
-
-Run this before any number goes into the report:
+"""Sanity checks on the result jsons before any number goes in the report.
 
     python experiments/check_results.py
 
-It reads every experiments/results*/ *.json and flags the failure modes that
-produce a plausible-looking but wrong generalization claim. Nothing here
-recomputes a metric -- it only checks the metrics we already wrote out are
-internally consistent and mean what the report says they mean.
-
-Exit code is 0 if only INFO/WARN fired, 1 if any FAIL fired.
+Checks the metrics we already wrote out are internally consistent; does not
+recompute anything. Exit 1 if any FAIL fired, 0 otherwise.
 """
 
 import glob
@@ -96,19 +90,11 @@ def check_coverage(d, fname, run):
 
 
 def check_below_chance(d, fname, run):
-    """AUC < 0.5 is anti-correlation, not merely weak generalization.
-
-    A detector scoring 0.36 reliably ranks fakes as MORE real than real videos.
-    Two things produce that: a label-polarity bug, or genuine anti-generalization.
-    Distinguish them by checking the SAME method in a run that trained on it --
-    if that is ~0.99, the crops and labels are fine and the effect is real.
-
-    For FaceSwap in this project that check was done: seen runs score 0.9926 to
-    0.9999 on the identical crops, so the below-chance held-out numbers are
-    genuine model behaviour, not a data error. Kept at FAIL because it must never
-    be written up as ordinary 'poor transfer' -- it is a stronger and different
-    claim, and it means a fixed 0.5 threshold is worse than useless there.
-    """
+    """AUC < 0.5 means the ranking inverted, not just that transfer is weak."""
+    # Either a label-polarity bug or real anti-generalization. Tell them apart by
+    # checking the same method in a run that trained on it -- for FaceSwap those
+    # score 0.9926-0.9999 on identical crops, so ours is real model behaviour.
+    # Still FAIL: it must not be written up as ordinary "poor transfer".
     for row in run.get("results", []):
         auc = row.get("auc")
         if isinstance(auc, (int, float)) and not math.isnan(auc) and auc < 0.5:
@@ -119,12 +105,8 @@ def check_below_chance(d, fname, run):
 
 
 def check_auc_acc_divergence(d, fname, run, tol=0.35):
-    """High AUC with floor-level accuracy means the threshold is miscalibrated.
-
-    AUC is threshold-free; accuracy is not. AUC 0.99 with acc 0.13 does not mean
-    the model is bad -- it means the 0.5 cut point is in the wrong place for this
-    test distribution. Worth separating in the report.
-    """
+    """High AUC with floor-level accuracy = the 0.5 threshold is in the wrong place."""
+    # AUC is threshold-free, accuracy is not; keep them separate in the writeup.
     for row in run.get("results", []):
         auc, acc = row.get("auc"), row.get("acc")
         if not all(isinstance(v, (int, float)) for v in (auc, acc)):
@@ -139,14 +121,10 @@ def check_auc_acc_divergence(d, fname, run, tol=0.35):
 
 
 def check_unseen_aggregation(d, fname, run, spread=0.25):
-    """The reported unseen_auc averages two very different things.
-
-    seen_vs_unseen_gap.csv collapses {held-out FF++ method, SimSwap} into one
-    'unseen' mean. Those are not interchangeable: the held-out method is a
-    same-dataset, same-pipeline manipulation, while SimSwap is an externally
-    synthesized generator. When they disagree sharply the mean is not a
-    meaningful quantity, and it can hide a below-chance component.
-    """
+    """unseen_auc averages the held-out method with SimSwap, which hides things."""
+    # A same-pipeline FF++ method and an externally synthesized generator are not
+    # interchangeable; when they disagree the mean is meaningless and can bury a
+    # below-chance component.
     unseen = [(r.get("tested_on"), r.get("auc")) for r in run.get("results", [])
               if r.get("seen") is False
               and isinstance(r.get("auc"), (int, float))
@@ -165,15 +143,10 @@ def check_unseen_aggregation(d, fname, run, spread=0.25):
 
 
 def check_simswap_provenance(runs_by_dir):
-    """The SimSwap column must come from ONE set, or it cannot be read as a column.
-
-    Two disjoint SimSwap sets exist in this project's history (a 994-pair set and
-    a 241-pair set, zero crop_id overlap). A run scored against one is not
-    comparable to a run scored against the other, even though both print a number
-    under 'SimSwap'. eval_simswap.py stamps `simswap_split` on every file it
-    scores; a file with a SimSwap row but no stamp predates that and its
-    provenance is unverified.
-    """
+    """The SimSwap column has to come from one set or it isn't a column."""
+    # Two disjoint SimSwap sets exist here (994-pair and 241-pair, zero overlap),
+    # so two runs can print a "SimSwap" number that means different things.
+    # eval_simswap.py stamps simswap_split; no stamp = unverified provenance.
     for d, runs in runs_by_dir.items():
         stamped, unstamped = {}, []
         for fname, run in runs.items():

@@ -1,21 +1,11 @@
-"""Quantify how much identity leakage inflates the cross-generator numbers.
-
-data/audit_splits.py shows every fold is NOT identity-disjoint: all 860 training
-identities reappear in test. This script measures what that is worth in AUC,
-WITHOUT retraining, by scoring the held-out method twice with the same checkpoint:
-
-  full  -- every test clip (what the committed results report)
-  clean -- only test clips whose identities never appear in training
-           (~280 clips per fold, and near-balanced: ~2742 real vs ~2740 fake,
-           versus the full set's ~7:1 imbalance)
-
-The clean number is the honest cross-generator result. The delta is the leakage.
+"""Measure what the identity leakage is worth in AUC, without retraining.
 
     python experiments/leakage_impact.py --config configs/<run>.yaml --subset clean
     python experiments/leakage_impact.py --config configs/<run>.yaml --subset full
 
-Appends one row to experiments/results/identity_leakage.csv. It never touches the
-per-run results JSONs -- those stay as committed, including teammates' numbers.
+Scores the held-out method on every test clip (full) or only on clips whose
+identities never appear in training (clean); the gap is the leakage. Appends to
+experiments/results/identity_leakage.csv and never touches the per-run JSONs.
 """
 
 import argparse
