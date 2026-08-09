@@ -1,12 +1,19 @@
 # ---------------------------------------------------------------------------
-# PyTorch is installed SEPARATELY from the cu128 wheel index, NOT from PyPI:
+# PyTorch is installed SEPARATELY from a CUDA wheel index, NOT from plain PyPI.
+# Pick the wheel that matches the card you are on:
 #
-#   pip install torch==2.9.* torchvision==0.24.* torchaudio==2.9.* \
-#       --index-url https://download.pytorch.org/whl/cu128
+#   school VM (V100 / older drivers) -- this is what the committed runs used:
+#     pip install torch==2.4.1 torchvision==0.19.1 \
+#         --index-url https://download.pytorch.org/whl/cu121
 #
-# The default PyPI torch wheel ships without sm_120 kernels and will fail on
-# RTX 50-series (Blackwell) GPUs. The cu128 wheel also runs on older cards
-# (e.g. Tesla P100, sm_60), so one install serves the whole team.
+#   RTX 50-series (Blackwell, sm_120):
+#     pip install torch==2.9.* torchvision==0.24.* torchaudio==2.9.* \
+#         --index-url https://download.pytorch.org/whl/cu128
+#
+# The default PyPI wheel ships without sm_120 kernels and fails on Blackwell.
+# The pipeline itself is not version-locked: train.py / evaluate.py run on
+# either stack, and checkpoints written under one load under the other.
+# Run check_env.py after installing; it verifies CUDA actually executes.
 # ---------------------------------------------------------------------------
 
 # Core numerics / data handling
@@ -26,6 +33,12 @@ mediapipe>=0.10
 # Model backbones (EfficientNet, Xception)
 timm>=1.0
 
+# SimSwap generator dependency: models/simswap_generator.py imports insightface
+# for face detection/alignment before the swap. onnxruntime is its runtime; use
+# onnxruntime-gpu instead if the CUDA major version matches your torch install.
+insightface>=0.7
+onnxruntime>=1.17
+
 # Metrics + training utilities
 scikit-learn>=1.5
 torchmetrics>=1.0
@@ -41,3 +54,6 @@ tensorboard>=2.16
 matplotlib
 seaborn
 tqdm
+
+# Tests (tests/ runs without the corpus or a GPU): pytest tests/
+pytest>=8.0

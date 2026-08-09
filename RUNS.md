@@ -78,6 +78,17 @@ all four folds and should keep failing until the splits are rebuilt. What the cl
 evaluation shows is that the effect on the reported numbers is small and, where it matters,
 conservative.
 
+## Analysis scripts
+
+Run these after a run's results JSON exists; none of them retrain anything.
+
+| Script | What it does |
+|---|---|
+| `experiments/check_results.py` | Sanity-checks every result JSON before the numbers go in the report. Exit 1 on any FAIL. |
+| `data/audit_splits.py` | DATA-05 identity-disjointness audit. Exit 1 if any fold leaks (all four currently do). |
+| `experiments/leakage_impact.py` | Measures what the leak is worth by re-scoring on never-seen identities. Writes `experiments/results/identity_leakage.csv`. |
+| `experiments/eval_simswap.py` | Re-scores only the SimSwap row of an existing run, in place. Use this instead of `evaluate.py` when you must not overwrite FF++ numbers a teammate produced. |
+
 ## SimSwap column caveat
 
 The SimSwap column is not comparable across every row. Two disjoint SimSwap sets exist

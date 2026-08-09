@@ -10,8 +10,10 @@ face-swap generator is used to synthesize a fifth, self-produced "unseen
 generator" test set, adding a generative component to the pipeline.
 
 > **Status:** The pipeline runs end to end: dataset acquisition, face-crop preprocessing,
-> leave-one-out splits, training, evaluation, and transfer-matrix assembly. The eight
-> training runs are in progress; see [`RUNS.md`](RUNS.md) for the board.
+> leave-one-out splits, training, evaluation, and transfer-matrix assembly. All eight
+> training runs are complete and their result JSONs are on `main`; see [`RUNS.md`](RUNS.md)
+> for who produced which. Known open item: the folds are not identity-disjoint --
+> `data/audit_splits.py` fails on all four by design, and `RUNS.md` records the measured effect.
 
 ## Team
 
@@ -50,6 +52,16 @@ experiments/02_transfer_matrix.ipynb        # assemble the cross-generator matri
 `00` installs its own pinned stack (torch 2.4.1+cu121, then a numpy-1.x island for
 mediapipe), so run it before anything else. The CLI equivalent is in
 [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
+
+The notebooks are thin wrappers, not a second implementation: `01` shells out to
+`experiments/train.py --config <yaml>` and `experiments/evaluate.py --config <yaml>`,
+which is exactly what the CLI path runs. Either route produces the same result, so a
+run done from the terminal is as reproducible as one done from the notebook. Every
+checkpoint stores the config it trained under, and all eight match their committed
+YAML, so nothing was trained from an uncommitted `configs/_local/` override.
+
+Pick the torch wheel that matches your GPU driver -- cu121 for the school VM, cu128
+for RTX 50-series. `requirements.txt` lists both; `check_env.py` verifies the install.
 
 ## Repository structure
 
