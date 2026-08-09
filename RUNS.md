@@ -52,8 +52,19 @@ originally claimed the run -- see Notes.
 
 ## What `experiments/results_cleantest/` is
 
-It is the **identity-disjoint evaluation** of the same eight runs. Nobody had written
-that down, so it sat in the repo uncitable.
+It is the **identity-disjoint evaluation** of the same eight runs, produced by evaluating
+against `data/splits_clean/` instead of `data/splits/`. Neither was documented, so both
+sat in the repo looking like leftovers.
+
+`data/splits_clean/` holds the same four folds with the test role restricted to the 140
+source identities that never appear in training (~280 clips, ~5,480 crops per fold, and
+near class-balanced). It is the honest split set, and the audit confirms it:
+
+    python data/audit_splits.py --splits data/splits_clean   # PASS
+    python data/audit_splits.py                              # FAIL (the leaky default)
+
+The runs themselves were trained on `data/splits/`, so `splits_clean/` affects evaluation
+only. Rebuilding the folds identity-disjoint at TRAINING time still requires retraining.
 
 Confirmed by reproducing it: `experiments/leakage_impact.py --subset clean` restricts
 each held-out test set to the 140 identities that never appear in training (~280 clips,
