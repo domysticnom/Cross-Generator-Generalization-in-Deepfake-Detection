@@ -1,0 +1,5 @@
+held_out,DeepFakes,Face2Face,FaceSwap,NeuralTextures,SimSwap
+DeepFakes,0.9285,0.9873,0.9926,0.9768,0.9138
+Face2Face,0.9964,0.8563,0.9964,0.9844,0.8914
+FaceSwap,0.9944,0.9933,0.476,0.9827,0.9092
+NeuralTextures,0.9964,0.9958,0.9993,0.7372,0.9174

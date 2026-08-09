@@ -1,0 +1,54 @@
+{
+  "run_name": "xception_holdout-neuraltextures_cleantest",
+  "backbone": "legacy_xception",
+  "held_out_method": "NeuralTextures",
+  "seed": 1337,
+  "level": "video",
+  "results": [
+    {
+      "auc": 0.9998,
+      "acc": 0.9892,
+      "precision": 0.9928,
+      "recall": 0.9856,
+      "f1": 0.9892,
+      "tested_on": "DeepFakes",
+      "seen": true
+    },
+    {
+      "auc": 0.9988,
+      "acc": 0.9892,
+      "precision": 0.9928,
+      "recall": 0.9856,
+      "f1": 0.9892,
+      "tested_on": "Face2Face",
+      "seen": true
+    },
+    {
+      "auc": 0.9999,
+      "acc": 0.9928,
+      "precision": 0.9928,
+      "recall": 0.9928,
+      "f1": 0.9928,
+      "tested_on": "FaceSwap",
+      "seen": true
+    },
+    {
+      "auc": 0.7638,
+      "acc": 0.5857,
+      "precision": 0.875,
+      "recall": 0.2,
+      "f1": 0.3256,
+      "tested_on": "NeuralTextures",
+      "seen": false
+    },
+    {
+      "auc": 0.8823,
+      "acc": 0.7536,
+      "precision": 0.9494,
+      "recall": 0.5357,
+      "f1": 0.6849,
+      "tested_on": "SimSwap",
+      "seen": false
+    }
+  ]
+}

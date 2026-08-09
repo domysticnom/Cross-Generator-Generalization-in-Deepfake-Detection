@@ -1,0 +1,54 @@
+{
+  "run_name": "xception_holdout-deepfakes_cleantest",
+  "backbone": "legacy_xception",
+  "held_out_method": "DeepFakes",
+  "seed": 1337,
+  "level": "video",
+  "results": [
+    {
+      "auc": 0.9263,
+      "acc": 0.8357,
+      "precision": 0.9519,
+      "recall": 0.7071,
+      "f1": 0.8115,
+      "tested_on": "DeepFakes",
+      "seen": false
+    },
+    {
+      "auc": 0.9956,
+      "acc": 0.9783,
+      "precision": 0.9784,
+      "recall": 0.9784,
+      "f1": 0.9784,
+      "tested_on": "Face2Face",
+      "seen": true
+    },
+    {
+      "auc": 0.9991,
+      "acc": 0.9856,
+      "precision": 0.9787,
+      "recall": 0.9928,
+      "f1": 0.9857,
+      "tested_on": "FaceSwap",
+      "seen": true
+    },
+    {
+      "auc": 0.9906,
+      "acc": 0.9675,
+      "precision": 0.9779,
+      "recall": 0.9568,
+      "f1": 0.9673,
+      "tested_on": "NeuralTextures",
+      "seen": true
+    },
+    {
+      "auc": 0.839,
+      "acc": 0.7571,
+      "precision": 0.939,
+      "recall": 0.55,
+      "f1": 0.6937,
+      "tested_on": "SimSwap",
+      "seen": false
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "run_name": "efficientnet_holdout-deepfakes_cleantest",
+  "backbone": "efficientnet_b4",
+  "held_out_method": "DeepFakes",
+  "seed": 1337,
+  "level": "video",
+  "results": [
+    {
+      "auc": 0.9285,
+      "acc": 0.8429,
+      "precision": 0.9068,
+      "recall": 0.7643,
+      "f1": 0.8295,
+      "tested_on": "DeepFakes",
+      "seen": false
+    },
+    {
+      "auc": 0.9873,
+      "acc": 0.935,
+      "precision": 0.906,
+      "recall": 0.9712,
+      "f1": 0.9375,
+      "tested_on": "Face2Face",
+      "seen": true
+    },
+    {
+      "auc": 0.9926,
+      "acc": 0.9386,
+      "precision": 0.9067,
+      "recall": 0.9784,
+      "f1": 0.9412,
+      "tested_on": "FaceSwap",
+      "seen": true
+    },
+    {
+      "auc": 0.9768,
+      "acc": 0.9206,
+      "precision": 0.9034,
+      "recall": 0.9424,
+      "f1": 0.9225,
+      "tested_on": "NeuralTextures",
+      "seen": true
+    },
+    {
+      "auc": 0.9138,
+      "acc": 0.8536,
+      "precision": 0.9091,
+      "recall": 0.7857,
+      "f1": 0.8429,
+      "tested_on": "SimSwap",
+      "seen": false
+    }
+  ]
+}

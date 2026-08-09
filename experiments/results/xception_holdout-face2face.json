@@ -1,0 +1,54 @@
+{
+  "run_name": "xception_holdout-face2face",
+  "backbone": "legacy_xception",
+  "held_out_method": "Face2Face",
+  "seed": 1337,
+  "level": "video",
+  "results": [
+    {
+      "auc": 0.9951,
+      "acc": 0.9531,
+      "precision": 0.9257,
+      "recall": 0.9856,
+      "f1": 0.9547,
+      "tested_on": "DeepFakes",
+      "seen": true
+    },
+    {
+      "auc": 0.7716,
+      "acc": 0.3862,
+      "precision": 0.9599,
+      "recall": 0.3129,
+      "f1": 0.4719,
+      "tested_on": "Face2Face",
+      "seen": false
+    },
+    {
+      "auc": 0.9979,
+      "acc": 0.9567,
+      "precision": 0.9262,
+      "recall": 0.9928,
+      "f1": 0.9583,
+      "tested_on": "FaceSwap",
+      "seen": true
+    },
+    {
+      "auc": 0.9871,
+      "acc": 0.9386,
+      "precision": 0.9236,
+      "recall": 0.9568,
+      "f1": 0.9399,
+      "tested_on": "NeuralTextures",
+      "seen": true
+    },
+    {
+      "auc": 0.8832,
+      "acc": 0.6869,
+      "precision": 0.9805,
+      "recall": 0.6559,
+      "f1": 0.786,
+      "tested_on": "SimSwap",
+      "seen": false
+    }
+  ]
+}
