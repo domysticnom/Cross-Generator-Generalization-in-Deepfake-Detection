@@ -64,6 +64,19 @@ def main():
     if not os.path.exists(split_path):
         sys.exit(f"missing split {split_path}")
 
+    # Validate the destination BEFORE inference. Scoring a run takes ~20 minutes on
+    # CPU, and the results JSON is not touched until the very end -- without this
+    # check a wrong --results-dir costs a full run and then dies on FileNotFoundError.
+    out_path = os.path.join(args.results_dir, f"{cfg['run_name']}.json")
+    if not args.limit:
+        if not os.path.exists(out_path):
+            sys.exit(f"no results file at {out_path} -- run experiments/evaluate.py for this "
+                     "run first; this script only rewrites an existing SimSwap row")
+        try:
+            json.load(open(out_path, encoding="utf-8"))
+        except Exception as e:
+            sys.exit(f"{out_path} is not readable JSON ({e}) -- refusing to overwrite it")
+
     device = resolve_device()
     ds = CropDataset(cfg["manifest"], split_path, "test", cfg["input_size"], ["real", "SimSwap"])
     if len(ds) == 0:
@@ -87,16 +100,15 @@ def main():
         print("  (--limit set: smoke test only, results NOT written)")
         return
 
-    path = os.path.join(args.results_dir, f"{cfg['run_name']}.json")
-    doc = json.load(open(path, encoding="utf-8"))
+    doc = json.load(open(out_path, encoding="utf-8"))
     m.update(tested_on="SimSwap", seen=False)
     rows = [r for r in doc["results"] if r.get("tested_on") != "SimSwap"]
     rows.append(m)
     # keep the original column order: FF++ methods as they were, SimSwap last
     doc["results"] = rows
     doc["simswap_split"] = split_path          # provenance: which set produced this column
-    json.dump(doc, open(path, "w", encoding="utf-8"), indent=2)
-    print("  rewrote SimSwap row in", path)
+    json.dump(doc, open(out_path, "w", encoding="utf-8"), indent=2)
+    print("  rewrote SimSwap row in", out_path)
 
 
 if __name__ == "__main__":
