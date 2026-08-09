@@ -1,0 +1,26 @@
+# core.autocrlf=true was mangling PDFs that git sniffed as text.
+# Mark every binary artifact explicitly so no line-ending conversion happens.
+*.pdf   binary
+*.docx  binary
+*.pptx  binary
+*.xlsx  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.mp4   binary
+*.npy   binary
+*.npz   binary
+*.pt    binary
+*.pth   binary
+*.ckpt  binary
+*.parquet binary
+
+# Text files: normalize to LF in the repo, checkout native on Windows.
+*.py    text
+*.md    text
+*.csv   text
+*.json  text
+*.yaml  text
+*.yml   text
+*.ipynb text
